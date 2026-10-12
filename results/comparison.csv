@@ -1,0 +1,4 @@
+Strategy,Trainable params,Train time (min),Sec / epoch,Best epoch,Val acc (%),Test acc (%),Test loss,Test macro-F1 (%),Test weighted-F1 (%),"Inference (ms/img, batched)"
+1. Feature Extraction (last layer only),"8,967 (0.2%)",15.7,94.3,9,43.35,43.52,1.4931,38.49,42.09,3.95
+2. Partial Fine-Tuning (last 2 blocks + last layer),"1,138,359 (28.3%)",15.4,92.2,8,55.82,54.64,1.1916,50.32,54.12,2.69
+3. Full Fine-Tuning (whole network),"4,016,515 (100.0%)",18.4,110.2,8,68.35,67.75,0.9186,66.67,67.52,2.61

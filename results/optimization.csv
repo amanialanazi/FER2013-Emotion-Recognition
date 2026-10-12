@@ -1,0 +1,6 @@
+Model,File size (MB),Accuracy on 1000 test imgs (%),"Latency (ms / image, CPU)"
+PyTorch FP32 (CPU),16.3,66.7,95.1
+ONNX FP32 (CPU),16.1,66.7,24.1
+ONNX INT8 (CPU),4.9,29.9,21.2
+ONNX FP16 (CPU),8.1,66.8,18.2
+ONNX INT8 partial (CPU),4.9,64.3,118.5

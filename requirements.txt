@@ -1,0 +1,18 @@
+# Training notebook (Google Colab with a T4 GPU already includes torch, torchvision, sklearn, pandas, matplotlib, opencv)
+torch>=2.3
+torchvision>=0.18
+scikit-learn
+pandas
+matplotlib
+tqdm
+kagglehub
+onnx
+onnxruntime
+onnxscript
+onnxconverter-common
+gradio
+
+# predict.py only needs these
+opencv-python-headless<5
+numpy
+pillow

@@ -1,0 +1,129 @@
+{
+  "best_strategy": "3. Full Fine-Tuning (whole network)",
+  "comparison": [
+    {
+      "Strategy": "1. Feature Extraction (last layer only)",
+      "Trainable params": "8,967 (0.2%)",
+      "Train time (min)": 15.7,
+      "Sec / epoch": 94.3,
+      "Best epoch": 9,
+      "Val acc (%)": 43.35,
+      "Test acc (%)": 43.52,
+      "Test loss": 1.4931,
+      "Test macro-F1 (%)": 38.49,
+      "Test weighted-F1 (%)": 42.09,
+      "Inference (ms/img, batched)": 3.95
+    },
+    {
+      "Strategy": "2. Partial Fine-Tuning (last 2 blocks + last layer)",
+      "Trainable params": "1,138,359 (28.3%)",
+      "Train time (min)": 15.4,
+      "Sec / epoch": 92.2,
+      "Best epoch": 8,
+      "Val acc (%)": 55.82,
+      "Test acc (%)": 54.64,
+      "Test loss": 1.1916,
+      "Test macro-F1 (%)": 50.32,
+      "Test weighted-F1 (%)": 54.12,
+      "Inference (ms/img, batched)": 2.69
+    },
+    {
+      "Strategy": "3. Full Fine-Tuning (whole network)",
+      "Trainable params": "4,016,515 (100.0%)",
+      "Train time (min)": 18.4,
+      "Sec / epoch": 110.2,
+      "Best epoch": 8,
+      "Val acc (%)": 68.35,
+      "Test acc (%)": 67.75,
+      "Test loss": 0.9186,
+      "Test macro-F1 (%)": 66.67,
+      "Test weighted-F1 (%)": 67.52,
+      "Inference (ms/img, batched)": 2.61
+    }
+  ],
+  "per_class_f1": {
+    "1. Feature Extraction (last layer only)": {
+      "angry": 31.7,
+      "disgust": 22.8,
+      "fear": 20.6,
+      "happy": 59.3,
+      "neutral": 38.1,
+      "sad": 36.9,
+      "surprise": 60.0
+    },
+    "2. Partial Fine-Tuning (last 2 blocks + last layer)": {
+      "angry": 42.1,
+      "disgust": 36.9,
+      "fear": 35.2,
+      "happy": 76.9,
+      "neutral": 51.8,
+      "sad": 40.6,
+      "surprise": 68.8
+    },
+    "3. Full Fine-Tuning (whole network)": {
+      "angry": 60.7,
+      "disgust": 70.9,
+      "fear": 51.5,
+      "happy": 87.4,
+      "neutral": 64.1,
+      "sad": 53.1,
+      "surprise": 79.0
+    }
+  },
+  "optimization": [
+    {
+      "Model": "PyTorch FP32 (CPU)",
+      "File size (MB)": 16.3,
+      "Accuracy on 1000 test imgs (%)": 66.7,
+      "Latency (ms / image, CPU)": 95.1
+    },
+    {
+      "Model": "ONNX FP32 (CPU)",
+      "File size (MB)": 16.1,
+      "Accuracy on 1000 test imgs (%)": 66.7,
+      "Latency (ms / image, CPU)": 24.1
+    },
+    {
+      "Model": "ONNX INT8 (CPU)",
+      "File size (MB)": 4.9,
+      "Accuracy on 1000 test imgs (%)": 29.9,
+      "Latency (ms / image, CPU)": 21.2
+    },
+    {
+      "Model": "ONNX FP16 (CPU)",
+      "File size (MB)": 8.1,
+      "Accuracy on 1000 test imgs (%)": 66.8,
+      "Latency (ms / image, CPU)": 18.2
+    },
+    {
+      "Model": "ONNX INT8 partial (CPU)",
+      "File size (MB)": 4.9,
+      "Accuracy on 1000 test imgs (%)": 64.3,
+      "Latency (ms / image, CPU)": 118.5
+    }
+  ],
+  "settings": {
+    "img_size": 224,
+    "batch_size": 64,
+    "epochs": 10,
+    "lr_head": 0.001,
+    "lr_backbone": 0.0001,
+    "val_split": 0.15,
+    "class_weights": [
+      0.8059999942779541,
+      2.437999963760376,
+      0.7960000038146973,
+      0.6000000238418579,
+      0.7229999899864197,
+      0.7329999804496765,
+      0.9049999713897705
+    ],
+    "train/val/test": [
+      24402,
+      4307,
+      7178
+    ],
+    "gpu": "Tesla T4",
+    "torch": "2.11.0+cu130"
+  }
+}

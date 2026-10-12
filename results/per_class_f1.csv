@@ -1,0 +1,8 @@
+,1. Feature Extraction (last layer only),2. Partial Fine-Tuning (last 2 blocks + last layer),3. Full Fine-Tuning (whole network)
+angry,31.7,42.1,60.7
+disgust,22.8,36.9,70.9
+fear,20.6,35.2,51.5
+happy,59.3,76.9,87.4
+neutral,38.1,51.8,64.1
+sad,36.9,40.6,53.1
+surprise,60.0,68.8,79.0

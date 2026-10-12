@@ -1,0 +1,15 @@
+3. Full Fine-Tuning (whole network)
+
+              precision    recall  f1-score   support
+
+       angry      0.585     0.630     0.607       958
+     disgust      0.716     0.703     0.709       111
+        fear      0.542     0.490     0.515      1024
+       happy      0.879     0.868     0.874      1774
+     neutral      0.597     0.692     0.641      1233
+         sad      0.582     0.489     0.531      1247
+    surprise      0.768     0.813     0.790       831
+
+    accuracy                          0.677      7178
+   macro avg      0.667     0.669     0.667      7178
+weighted avg      0.676     0.677     0.675      7178
