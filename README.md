@@ -200,7 +200,8 @@ Example output: `Face 1: happy 96.8% | neutral 2.4% | sad 0.6%`
 8. **Quantization-aware training (QAT)** to get an accurate INT8 model for mobile devices; faster data pipeline (GPU augmentation) to cut training time.
 
 ## 10. SDAIA Academy GitHub Repository Link
-🔗 https://github.com/amanialanazi/FER2013-Emotion-Recognition
+- SDAIA Academy: https://github.com/SDAIAAcademy
+- This project: https://github.com/amanialanazi/FER2013-Emotion-Recognition
 
 ---
 *Dataset: FER2013 (Goodfellow et al., ICML 2013 Workshop "Challenges in Representation Learning"). Pretrained weights: torchvision EfficientNet-B0 (ImageNet).*
