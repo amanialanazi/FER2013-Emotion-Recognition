@@ -16,3 +16,6 @@ gradio
 opencv-python-headless<5
 numpy
 pillow
+
+# live_webcam.py on a laptop needs the GUI build of OpenCV (to open the camera window)
+# pip install "opencv-python<5" onnxruntime numpy

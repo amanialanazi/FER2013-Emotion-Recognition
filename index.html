@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>قارئ مشاعر الوجه</title>
+<meta name="description" content="Facial emotion recognition in the browser — EfficientNet-B0 trained on FER2013, running with ONNX Runtime Web.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1f2933; --muted: #5f6b7a; --line: #e3e7ec;
+    --accent: #2f6f8f; --accent-soft: #e6f0f5; --ok: #2f8f6f; --warn: #b7791f;
+    --angry: #d1495b; --disgust: #5b8e3e; --fear: #8a5cb8; --happy: #e0a526;
+    --neutral: #8a95a3; --sad: #3d7cc9; --surprise: #e07b26;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .logo { width: 48px; height: 48px; border-radius: 12px; background: var(--accent-soft); display: grid; place-items: center; flex: none; }
+  h1 { font-size: 1.55rem; margin: 0; font-weight: 700; }
+  .sub { margin: 0; color: var(--muted); font-size: .95rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 18px; }
+  .badge { font-size: .8rem; background: var(--card); border: 1px solid var(--line); color: var(--muted); padding: 3px 10px; border-radius: 999px; direction: ltr; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .status { display: flex; align-items: center; gap: 10px; font-size: .92rem; color: var(--muted); margin-bottom: 14px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); flex: none; }
+  .dot.ready { background: var(--ok); }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .drop { display: block; border: 2px dashed #c9d2dc; border-radius: var(--radius); padding: 30px 16px; text-align: center; cursor: pointer; background: #fbfcfd; transition: .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop p { margin: 6px 0 0; color: var(--muted); font-size: .9rem; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn.secondary { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .stage { margin-top: 16px; position: relative; }
+  canvas.view { width: 100%; height: auto; border-radius: 12px; background: #eef1f4; display: block; }
+  .faces { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 14px; }
+  .face { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; gap: 12px; }
+  .face canvas { width: 72px; height: 72px; border-radius: 8px; flex: none; }
+  .face h3 { margin: 0 0 6px; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+  .num { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: .8rem; }
+  .bars { flex: 1; min-width: 0; }
+  .bar { display: grid; grid-template-columns: 62px 1fr 38px; align-items: center; gap: 6px; font-size: .78rem; color: var(--muted); }
+  .bar .track { height: 7px; background: #eef1f4; border-radius: 4px; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 4px; }
+  .bar .pct { direction: ltr; text-align: left; }
+  .note { font-size: .85rem; color: var(--muted); margin-top: 10px; }
+  .live-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .fps { direction: ltr; font-size: .85rem; color: var(--muted); }
+  video { display: none; }
+  footer { margin-top: 22px; font-size: .85rem; color: var(--muted); text-align: center; }
+  footer a { color: var(--accent); }
+  .hidden { display: none !important; }
+  @media (max-width: 560px) { h1 { font-size: 1.3rem; } .tab { font-size: .88rem; padding: 10px 6px; } .bar { grid-template-columns: 54px 1fr 34px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2f6f8f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><circle cx="9" cy="10" r=".9" fill="#2f6f8f"/><circle cx="15" cy="10" r=".9" fill="#2f6f8f"/><path d="M8.2 14.5c1 1.3 2.3 2 3.8 2s2.8-.7 3.8-2"/></svg>
+    </div>
+    <div>
+      <h1>قارئ مشاعر الوجه</h1>
+      <p class="sub">ارفع أي صورة فيها وجه، أو شغّل الكاميرا، ويتعرّف النموذج على الشعور من بين 7 مشاعر.</p>
+    </div>
+  </header>
+  <div class="badges">
+    <span class="badge">EfficientNet-B0 · Full Fine-Tuning</span>
+    <span class="badge">FER2013 · test accuracy 67.75%</span>
+    <span class="badge">ONNX Runtime Web</span>
+  </div>
+
+  <div class="card">
+    <div class="status"><span class="dot" id="dot"></span><span id="status">جاري تحميل النموذج…</span></div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-upload" aria-selected="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg> رفع صورة</button>
+      <button class="tab" role="tab" id="tab-live" aria-selected="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3"/></svg> الكاميرا المباشرة</button>
+    </div>
+
+    <section id="panel-upload">
+      <label class="drop" id="drop">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2f6f8f" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>
+        <div><strong>اسحب صورة هنا أو اضغط للاختيار</strong></div>
+        <p>JPG أو PNG · الصورة تُحلَّل داخل جهازك ولا تُرسل لأي خادم</p>
+        <input type="file" id="file" accept="image/*" hidden>
+      </label>
+      <div class="stage hidden" id="upload-stage"><canvas class="view" id="upload-canvas"></canvas></div>
+      <div class="faces" id="upload-faces"></div>
+      <div class="note hidden" id="upload-note"></div>
+    </section>
+
+    <section id="panel-live" class="hidden">
+      <div class="live-controls">
+        <button class="btn" id="start" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> تشغيل الكاميرا</button>
+        <button class="btn secondary hidden" id="stop">إيقاف</button>
+        <span class="fps" id="fps"></span>
+      </div>
+      <video id="video" playsinline muted></video>
+      <div class="stage"><canvas class="view hidden" id="live-canvas"></canvas></div>
+      <div class="faces" id="live-faces"></div>
+      <p class="note">الكاميرا تعمل داخل المتصفح فقط. على الجوال افتح الصفحة من Safari أو Chrome واسمح بالكاميرا.</p>
+    </section>
+  </div>
+
+  <footer>
+    مشروع ختامي: تطوير أنظمة الرؤية الحاسوبية (SDAIA Academy) · أماني عيد العنزي ·
+    <a href="https://github.com/amanialanazi/FER2013-Emotion-Recognition">المستودع على GitHub</a>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.js"></script>
+<script>
+const ORT_WASM = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
+const OPENCV_URL = "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js";
+const MODEL_URL = "models/fer_efficientnet_b0_fp16.onnx";
+const CASCADE_URL = "assets/haarcascade_frontalface_default.xml";
+
+const CLASSES = ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"];
+const AR = { angry: "غضب", disgust: "اشمئزاز", fear: "خوف", happy: "سعادة", neutral: "محايد", sad: "حزن", surprise: "مفاجأة" };
+const css = getComputedStyle(document.documentElement);
+const COLOR = Object.fromEntries(CLASSES.map(c => [c, css.getPropertyValue("--" + c).trim()]));
+const MEAN = [0.485, 0.456, 0.406], STD = [0.229, 0.224, 0.225];
+const $ = id => document.getElementById(id);
+
+let session = null, classifier = null;
+
+function setStatus(text, ready) { $("status").textContent = text; $("dot").classList.toggle("ready", !!ready); }
+
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.async = true; s.onload = res; s.onerror = () => rej(new Error("failed to load " + src)); document.head.appendChild(s); });
+}
+
+async function init() {
+  try {
+    ort.env.wasm.wasmPaths = ORT_WASM;
+    ort.env.wasm.numThreads = 1;
+    setStatus("جاري تحميل النموذج (8 ميجا)…");
+    session = await ort.InferenceSession.create(MODEL_URL, { executionProviders: ["wasm"] });
+    setStatus("جاري تحميل كاشف الوجوه…");
+    await loadScript(OPENCV_URL);
+    if (window.cv instanceof Promise) window.cv = await window.cv;
+    else if (!window.cv.Mat) await new Promise(r => { window.cv.onRuntimeInitialized = r; });
+    const xml = new Uint8Array(await (await fetch(CASCADE_URL)).arrayBuffer());
+    cv.FS_createDataFile("/", "face.xml", xml, true, false, false);
+    classifier = new cv.CascadeClassifier();
+    classifier.load("face.xml");
+    setStatus("جاهز. ارفع صورة أو شغّل الكاميرا.", true);
+    $("start").disabled = false;
+    if (pendingFile) analyzeFile(pendingFile);
+  } catch (e) {
+    console.error(e);
+    setStatus("تعذّر تحميل النموذج: " + e.message);
+  }
+}
+
+// ---- face detection (OpenCV Haar cascade, same detector as the notebook) ----
+function detectFaces(canvas, maxSide) {
+  const scale = Math.min(1, maxSide / Math.max(canvas.width, canvas.height));
+  const small = document.createElement("canvas");
+  small.width = Math.round(canvas.width * scale); small.height = Math.round(canvas.height * scale);
+  small.getContext("2d").drawImage(canvas, 0, 0, small.width, small.height);
+  const src = cv.imread(small), gray = new cv.Mat(), faces = new cv.RectVector();
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+  const minSide = Math.max(30, Math.round(Math.min(small.width, small.height) * 0.08));
+  classifier.detectMultiScale(gray, faces, 1.1, 6, 0, new cv.Size(minSide, minSide), new cv.Size(0, 0));
+  const out = [];
+  for (let i = 0; i < faces.size(); i++) {
+    const r = faces.get(i);
+    out.push({ x: r.x / scale, y: r.y / scale, w: r.width / scale, h: r.height / scale });
+  }
+  src.delete(); gray.delete(); faces.delete();
+  // drop false detections: much smaller than the biggest face, or mostly inside a bigger box
+  out.sort((a, b) => b.w * b.h - a.w * a.h);
+  const big = out.length ? out[0].w * out[0].h : 0, kept = [];
+  for (const f of out) {
+    if (f.w * f.h < 0.25 * big) continue;
+    const inside = kept.some(k => {
+      const ix = Math.max(0, Math.min(f.x + f.w, k.x + k.w) - Math.max(f.x, k.x));
+      const iy = Math.max(0, Math.min(f.y + f.h, k.y + k.h) - Math.max(f.y, k.y));
+      return ix * iy > 0.3 * f.w * f.h;
+    });
+    if (!inside) kept.push(f);
+  }
+  return kept.sort((a, b) => a.x - b.x);
+}
+
+// ---- preprocessing: crop -> 224x224 -> grayscale -> 3 channels -> ImageNet normalisation ----
+const prep = document.createElement("canvas"); prep.width = prep.height = 224;
+const prepCtx = prep.getContext("2d", { willReadFrequently: true });
+function toTensor(canvas, box) {
+  prepCtx.drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, 224, 224);
+  const px = prepCtx.getImageData(0, 0, 224, 224).data, n = 224 * 224, data = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++) {
+    const g = (0.299 * px[4 * i] + 0.587 * px[4 * i + 1] + 0.114 * px[4 * i + 2]) / 255;
+    for (let c = 0; c < 3; c++) data[c * n + i] = (g - MEAN[c]) / STD[c];
+  }
+  return new ort.Tensor("float32", data, [1, 3, 224, 224]);
+}
+
+async function predict(canvas, box) {
+  const out = await session.run({ image: toTensor(canvas, box) });
+  const logits = Array.from(out[session.outputNames[0]].data);
+  const m = Math.max(...logits), e = logits.map(v => Math.exp(v - m)), s = e.reduce((a, b) => a + b, 0);
+  return e.map(v => v / s);
+}
+
+function withMargin(f, W, H) {
+  const m = 0.1 * f.w, x = Math.max(0, f.x - m), y = Math.max(0, f.y - m);
+  return { x, y, w: Math.min(W, f.x + f.w + m) - x, h: Math.min(H, f.y + f.h + m) - y };
+}
+
+function drawBox(ctx, box, label, prob, idx, lw) {
+  const col = COLOR[label];
+  ctx.lineWidth = lw; ctx.strokeStyle = col; ctx.strokeRect(box.x, box.y, box.w, box.h);
+  const fs = Math.max(14, Math.round(lw * 6));
+  ctx.font = `600 ${fs}px "IBM Plex Sans Arabic", sans-serif`;
+  const text = `${idx}  ${label} ${Math.round(prob * 100)}%`;
+  const tw = ctx.measureText(text).width + 14, th = fs + 10, ty = box.y - th > 0 ? box.y - th : box.y + box.h;
+  ctx.fillStyle = col; ctx.fillRect(box.x - lw / 2, ty, tw, th);
+  ctx.fillStyle = "#fff"; ctx.textBaseline = "middle"; ctx.direction = "ltr"; ctx.fillText(text, box.x + 7, ty + th / 2);
+}
+
+function faceCard(canvas, box, probs, idx) {
+  const order = probs.map((p, i) => [p, i]).sort((a, b) => b[0] - a[0]);
+  const top = CLASSES[order[0][1]];
+  const el = document.createElement("div"); el.className = "face";
+  const thumb = document.createElement("canvas"); thumb.width = thumb.height = 96;
+  thumb.getContext("2d").drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, 96, 96);
+  const bars = order.map(([p, i]) => `<div class="bar"><span>${AR[CLASSES[i]]}</span><div class="track"><div class="fill" style="width:${(p * 100).toFixed(1)}%;background:${COLOR[CLASSES[i]]}"></div></div><span class="pct">${Math.round(p * 100)}%</span></div>`).join("");
+  el.innerHTML = `<div class="bars"><h3><span class="num" style="background:${COLOR[top]}">${idx}</span>${AR[top]} <span style="color:var(--muted);font-weight:400;font-size:.85rem">${top} · ${Math.round(order[0][0] * 100)}%</span></h3>${bars}</div>`;
+  el.prepend(thumb);
+  return el;
+}
+
+// ---- upload ----
+let pendingFile = null;
+async function analyzeFile(file) {
+  if (!session || !classifier) { pendingFile = file; setStatus("الصورة جاهزة، ننتظر اكتمال تحميل النموذج…"); return; }
+  pendingFile = null;
+  const img = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+  const cvs = $("upload-canvas"); cvs.width = Math.round(img.width * scale); cvs.height = Math.round(img.height * scale);
+  const ctx = cvs.getContext("2d"); ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+  const clean = document.createElement("canvas"); clean.width = cvs.width; clean.height = cvs.height;
+  clean.getContext("2d").drawImage(cvs, 0, 0);
+  $("upload-stage").classList.remove("hidden");
+  const list = $("upload-faces"); list.innerHTML = "";
+  let faces = detectFaces(clean, 800).map(f => withMargin(f, cvs.width, cvs.height));
+  const note = $("upload-note");
+  if (!faces.length) {
+    faces = [{ x: 0, y: 0, w: cvs.width, h: cvs.height }];
+    note.textContent = "لم يُكتشف وجه بوضوح، فحلّلنا الصورة كاملة. للحصول على نتيجة أدق استخدم صورة يظهر فيها الوجه من الأمام.";
+    note.classList.remove("hidden");
+  } else note.classList.add("hidden");
+  const lw = Math.max(2, Math.round(cvs.width / 300));
+  for (let i = 0; i < faces.length; i++) {
+    const probs = await predict(clean, faces[i]);
+    const k = probs.indexOf(Math.max(...probs));
+    drawBox(ctx, faces[i], CLASSES[k], probs[k], i + 1, lw);
+    list.appendChild(faceCard(clean, faces[i], probs, i + 1));
+  }
+  setStatus(`تم: ${faces.length} وجه في الصورة.`, true);
+}
+const drop = $("drop"), fileInput = $("file");
+drop.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => fileInput.files[0] && analyzeFile(fileInput.files[0]));
+["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => e.dataTransfer.files[0] && analyzeFile(e.dataTransfer.files[0]));
+
+// ---- live camera ----
+let stream = null, running = false, smooth = null;
+async function startLive() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 } }, audio: false });
+  } catch (e) { setStatus("لم يُسمح بالكاميرا أو لا توجد كاميرا: " + e.message); return; }
+  const v = $("video"); v.srcObject = stream; await v.play();
+  $("live-canvas").classList.remove("hidden"); $("start").classList.add("hidden"); $("stop").classList.remove("hidden");
+  running = true; smooth = null; loop();
+}
+function stopLive() {
+  running = false; if (stream) stream.getTracks().forEach(t => t.stop());
+  $("start").classList.remove("hidden"); $("stop").classList.add("hidden"); $("fps").textContent = "";
+}
+async function loop() {
+  const v = $("video"), cvs = $("live-canvas"), ctx = cvs.getContext("2d");
+  let fps = 0;
+  while (running) {
+    const t0 = performance.now();
+    if (v.videoWidth) {
+      cvs.width = v.videoWidth; cvs.height = v.videoHeight;
+      ctx.save(); ctx.translate(cvs.width, 0); ctx.scale(-1, 1); ctx.drawImage(v, 0, 0); ctx.restore();   // mirror like a selfie
+      const clean = document.createElement("canvas"); clean.width = cvs.width; clean.height = cvs.height;
+      clean.getContext("2d").drawImage(cvs, 0, 0);
+      const faces = detectFaces(clean, 360).map(f => withMargin(f, cvs.width, cvs.height));
+      const list = $("live-faces"); list.innerHTML = "";
+      for (let i = 0; i < faces.length; i++) {
+        let probs = await predict(clean, faces[i]);
+        if (faces.length === 1) { smooth = smooth ? smooth.map((p, j) => 0.6 * p + 0.4 * probs[j]) : probs; probs = smooth; }
+        const k = probs.indexOf(Math.max(...probs));
+        drawBox(ctx, faces[i], CLASSES[k], probs[k], i + 1, 3);
+        list.appendChild(faceCard(clean, faces[i], probs, i + 1));
+      }
+      const dt = performance.now() - t0; fps = fps ? 0.85 * fps + 0.15 * (1000 / dt) : 1000 / dt;
+      $("fps").textContent = `${fps.toFixed(1)} FPS · ${faces.length} face(s)`;
+    }
+    await new Promise(r => requestAnimationFrame(r));
+  }
+}
+$("start").addEventListener("click", startLive);
+$("stop").addEventListener("click", stopLive);
+
+// ---- tabs ----
+function show(tab) {
+  const live = tab === "live";
+  $("tab-upload").setAttribute("aria-selected", String(!live)); $("tab-live").setAttribute("aria-selected", String(live));
+  $("panel-upload").classList.toggle("hidden", live); $("panel-live").classList.toggle("hidden", !live);
+  if (!live && running) stopLive();
+}
+$("tab-upload").addEventListener("click", () => show("upload"));
+$("tab-live").addEventListener("click", () => show("live"));
+
+init();
+</script>
+</body>
+</html>

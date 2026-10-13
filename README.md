@@ -4,7 +4,9 @@
 
 **Student:** Amani Eid Alanazi — أماني عيد العنزي
 
-A computer-vision system that recognises **7 facial emotions** from a face image. One pretrained CNN (**EfficientNet-B0**) is adapted to the FER2013 dataset in **three different ways**, and the three models are compared on **accuracy, loss and training time**. The best model is exported to **ONNX**, optimized (FP16 / INT8), and deployed in a **face-detection + emotion web app**.
+A computer-vision system that recognises **7 facial emotions** from a face image. One pretrained CNN (**EfficientNet-B0**) is adapted to the FER2013 dataset in **three different ways**, and the three models are compared on **accuracy, loss and training time**. The best model is exported to **ONNX**, optimized (FP16 / INT8), and deployed in a **face-detection + emotion web app** and a **real-time webcam stream**.
+
+🌐 **Try it in your browser:** https://amanialanazi.github.io/FER2013-Emotion-Recognition/ — upload any photo or use the live camera (the model runs on your device, nothing is uploaded).
 
 | Strategy | Test accuracy | Test loss | Macro-F1 | Training time |
 |---|---|---|---|---|
@@ -20,7 +22,7 @@ A computer-vision system that recognises **7 facial emotions** from a face image
 - **Task:** image **classification** (multi-class, 7 classes).
 - **Model:** EfficientNet-B0 pretrained on ImageNet, trained with 3 transfer-learning strategies.
 - **Output:** the predicted emotion + a confidence score for each of the 7 emotions.
-- **Deliverables:** full Colab notebook, trained models (PyTorch + ONNX FP32/FP16/INT8), result tables and figures, a command-line prediction script and a Gradio web demo.
+- **Deliverables:** full Colab notebook, trained models (PyTorch + ONNX FP32/FP16/INT8), result tables and figures, a command-line prediction script, a Gradio web demo and a **live webcam stream**.
 
 ## 2. Problem Description
 Recognising the emotion on a face from a single image. Such a system can support:
@@ -84,6 +86,8 @@ flowchart LR
     F --> G[Best model]
     G --> H[ONNX export<br/>FP16 / INT8]
     H --> I[Face detection + prediction<br/>Gradio app / predict.py]
+    H --> J[Live webcam stream<br/>live_webcam.py / Live_Stream_Demo]
+    H --> K[Web app in the browser<br/>GitHub Pages · ONNX Runtime Web]
 ```
 
 ## 5. Results & Evaluation
@@ -151,10 +155,21 @@ The best model is exported to **ONNX** so it can run without PyTorch (servers, w
 - **FP16 halves the file size** with no accuracy loss and is the fastest → this is the deployed model.
 - **Lesson learned — INT8 quantization:** naive static INT8 quantization destroyed accuracy (66.7 % → 29.9 %). EfficientNet's **depthwise convolutions** (one filter per channel) are very sensitive to 8-bit rounding. Keeping them in FP32 recovers most of the accuracy (64.3 %), but it is slow on CPU. Proper INT8 would need quantization-aware training (QAT).
 
+### Web app (GitHub Pages) — upload a photo or use the live camera
+**https://amanialanazi.github.io/FER2013-Emotion-Recognition/** (`index.html`)
+- The deployed **ONNX FP16** model runs **inside the browser** with ONNX Runtime Web (WebAssembly) — no server, no install, works on laptops and phones, and the photo never leaves the device.
+- Faces are found with the same OpenCV Haar cascade (OpenCV.js), cropped and preprocessed exactly like the test images, then each face gets its emotion + the 7 probabilities.
+- **Live camera** mode runs the same pipeline on every video frame (≈ 6–10 FPS on a laptop CPU).
+
+### Live stream (real-time webcam)
+The best model also runs on a **live video stream**: every frame → face detection → ONNX FP16 model → emotion + confidence drawn on the video.
+- **On a laptop:** `python live_webcam.py` (opens the webcam, press `q` to quit) — runs on the CPU in real time.
+- **In Google Colab:** open [`Live_Stream_Demo.ipynb`](https://colab.research.google.com/github/amanialanazi/FER2013-Emotion-Recognition/blob/main/Live_Stream_Demo.ipynb) → `Run all` → open the public Gradio link → allow the camera → **Record**. No training needed: it downloads the FP16 model from this repository.
+
 **Real application:** a **Gradio** web app (in the notebook) — upload a photo or use the webcam → OpenCV detects the face → the face is cropped and preprocessed → the ONNX model predicts the emotion → the app shows the top-3 emotions and draws a box on the face. The same pipeline is available as a script: `predict.py`.
 
 ## 7. Technologies Used
-Python · PyTorch · torchvision (EfficientNet-B0) · scikit-learn · NumPy · pandas · Matplotlib · OpenCV · ONNX · ONNX Runtime (quantization) · onnxconverter-common (FP16) · Gradio · kagglehub · Google Colab (Tesla T4 GPU)
+Python · PyTorch · torchvision · ONNX Runtime Web · OpenCV.js · GitHub Pages · (EfficientNet-B0) · scikit-learn · NumPy · pandas · Matplotlib · OpenCV · ONNX · ONNX Runtime (quantization) · onnxconverter-common (FP16) · Gradio · kagglehub · Google Colab (Tesla T4 GPU)
 
 ## 8. How to Run the Project
 
@@ -173,9 +188,20 @@ python predict.py path/to/photo.jpg --save result.jpg
 ```
 Example output: `Face 1: happy 96.8% | neutral 2.4% | sad 0.6%`
 
+**Option C — Live webcam stream**
+```bash
+pip install onnxruntime "opencv-python<5" numpy
+python live_webcam.py            # press q to quit
+```
+Or in Colab: [Live_Stream_Demo.ipynb](https://colab.research.google.com/github/amanialanazi/FER2013-Emotion-Recognition/blob/main/Live_Stream_Demo.ipynb) → Run all → open the public link.
+
 ### Repository structure
 ```
 ├── FER2013_Transfer_Learning_Comparison.ipynb   # full project notebook (with outputs)
+├── index.html                                   # web app (GitHub Pages): upload a photo or live camera
+├── assets/haarcascade_frontalface_default.xml   # OpenCV face detector used by the web app
+├── Live_Stream_Demo.ipynb                       # live webcam stream in Colab (Gradio)
+├── live_webcam.py                               # live webcam stream on a laptop (OpenCV)
 ├── predict.py                                   # command-line prediction (face detection + ONNX)
 ├── requirements.txt
 ├── models/
